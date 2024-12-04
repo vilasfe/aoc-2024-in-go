@@ -4,7 +4,7 @@ import (
   "fmt"
   "iter"
   "os"
-  //"slices"
+  "slices"
   "strconv"
   "strings"
 
@@ -54,6 +54,15 @@ func Values[K, V any](seq iter.Seq2[K, V]) iter.Seq[V] {
   }
 }
 
+// Map function to apply a function to each element in a slice
+func Map[T, V any](ts []T, fn func(T) V) []V {
+  result := make([]V, len(ts))
+  for i, t := range ts {
+    result[i] = fn(t)
+  }
+  return result
+}
+
 // CountIf function
 func CountIf[T any](slice []T, f func(T) bool) int64 {
   count := int64(0)
@@ -65,40 +74,62 @@ func CountIf[T any](slice []T, f func(T) bool) int64 {
   return count
 }
 
-func IsSafe(s []string) bool {
-  val, err := strconv.ParseInt(s[0], 10, 64)
-  if err != nil {
-    panic(err)
+func AbsInt64(x int64) int64 {
+  if x < 0 {
+    return -x
+  }
+  return x
+}
+
+func IsSafe(s []int64) bool {
+
+  diff := []int64{}
+
+  for l,r := range Zip(s[:len(s)-1], s[1:]) {
+    diff = append(diff, l - r)
   }
 
-  nextVal, nextErr := strconv.ParseInt(s[1], 10, 64)
-  if err != nil {
-    panic(err)
+  // check for zeros
+  if slices.Contains(diff, 0) {
+    return false
   }
 
-  diff := val - nextVal
-  nextDiff := diff
-
-  for i := 1; i < len(s); i++ {
-    nextVal, nextErr = strconv.ParseInt(s[i], 10, 64)
-    if nextErr != nil {
-      panic(nextErr)
-    }
-
-    if diff > 0 {
-      nextDiff = val - nextVal
-    } else {
-      nextDiff = nextVal - val
-    }
-
-    if nextDiff < 1 || nextDiff > 3 {
+  // check all negative or all positive
+  if CountIf(diff, func(n int64) bool { return n < 0 }) < int64(len(diff)) && CountIf(diff, func(n int64) bool { return n > 0 }) < int64(len(diff)) {
       return false
-    }
+  }
 
-    val = nextVal
+  // now check > 3, since we already checked for zeros above
+  if slices.ContainsFunc(diff, func(n int64) bool { return AbsInt64(n) > 3 }) {
+    return false
   }
 
   return true
+}
+
+func IsSafe2(s []int64) bool {
+  // 610 is too low
+  // 626 is the right answer but breaks my test
+  if IsSafe(s) {
+    // fmt.Printf("%v GOOD\n", s)
+    return true
+  } else {
+    for i := 0; i < len(s) - 1; i++ {
+      s2 := make([]int64, len(s))
+      copy(s2, s)
+
+      s2 = slices.Delete(s2, i, i+1)
+      if IsSafe(s2) {
+        fmt.Printf("%v GOOD\n", s2)
+        return true
+      } else {
+        fmt.Printf("%v\n", s2)
+      }
+    }
+  }
+
+  fmt.Printf("%v NOT GOOD\n", s)
+  return false
 }
 
 func part1(s string) int64 {
@@ -110,8 +141,15 @@ func part1(s string) int64 {
     if line == "" {
       continue
     }
-    slice := strings.Fields(line)
+    slice := Map(strings.Fields(line), func(item string) int64 {
+      val, err := strconv.ParseInt(item, 10, 64)
+      if err != nil {
+        panic(err)
+      }
+      return val
+    })
     if IsSafe(slice) {
+      // fmt.Printf("%v GOOD PART1\n", slice)
       total++
     }
   }
@@ -121,6 +159,23 @@ func part1(s string) int64 {
 
 func part2(s string) int64 {
   total := int64(0)
+
+  // Parse file line by line
+  for _, line := range strings.Split(s, "\n") {
+    if line == "" {
+      continue
+    }
+    slice := Map(strings.Fields(line), func(item string) int64 {
+      val, err := strconv.ParseInt(item, 10, 64)
+      if err != nil {
+        panic(err)
+      }
+      return val
+    })
+    if IsSafe2(slice) {
+      total++
+    }
+  }
 
   return total
 }
