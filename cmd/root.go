@@ -3,6 +3,7 @@ package cmd
 import (
   "aoc-2024-in-go/cmd/day1"
   "aoc-2024-in-go/cmd/day2"
+  "aoc-2024-in-go/cmd/day3"
 
   "fmt"
   "os"
@@ -22,6 +23,7 @@ var Cmd = &cobra.Command {
 func init() {
   Cmd.AddCommand(day1.Cmd)
   Cmd.AddCommand(day2.Cmd)
+  Cmd.AddCommand(day3.Cmd)
 }
 
 func Execute() {
