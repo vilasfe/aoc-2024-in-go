@@ -116,10 +116,33 @@ func part1(s string) int64 {
 func part2(s string) int64 {
   total := int64(0)
 
+  re := regexp.MustCompile(`do\(\)|don't\(\)|mul\((\d{1,3}),(\d{1,3})\)`)
+
+  shouldDo := true
+
   // Parse file line by line
   for _, line := range strings.Split(s, "\n") {
     if line == "" {
       continue
+    }
+
+    for _, m := range re.FindAllStringSubmatch(line, -1) {
+      // fmt.Println(m)
+      if m[0] == "do()" {
+        shouldDo = true
+      } else if m[0] == "don't()" {
+        shouldDo = false
+      } else if shouldDo {
+        l, l_err := strconv.ParseInt(m[1], 10, 64)
+        if l_err != nil {
+          panic(l_err)
+        }
+        r, r_err := strconv.ParseInt(m[2], 10, 64)
+        if r_err != nil {
+          panic(r_err)
+        }
+        total += l*r
+      }
     }
   }
 
