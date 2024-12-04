@@ -27,3 +27,6 @@ go.work.sum
 # VI temp files
 .*.swp
 
+# AOC input files
+1.txt
+
