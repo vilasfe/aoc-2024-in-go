@@ -135,6 +135,32 @@ func part1(s string) int64 {
 func part2(s string) int64 {
   total := int64(0)
 
+  // Parse file line by line
+  grid := strings.Split(s, "\n")
+  for i := 1; i < len(grid) - 1; i++ {
+    // fmt.Println(grid[i])
+    if grid[i+1] == "" {
+      continue
+    }
+    for j := 1; j < len(grid[i]) - 1; j++ {
+      if grid[i][j] == 'A' {
+        if grid[i-1][j-1] == 'M' && grid[i+1][j+1] == 'S' {
+          if grid[i+1][j-1] == 'M' && grid[i-1][j+1] == 'S' {
+            total++
+          } else if grid[i+1][j-1] == 'S' && grid[i-1][j+1] == 'M' {
+            total++
+          }
+        } else if grid[i-1][j-1] == 'S' && grid[i+1][j+1] == 'M' {
+          if grid[i+1][j-1] == 'M' && grid[i-1][j+1] == 'S' {
+            total++
+          } else if grid[i+1][j-1] == 'S' && grid[i-1][j+1] == 'M' {
+            total++
+          }
+        }
+      }
+    }
+  }
+
   return total
 }
 
