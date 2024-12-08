@@ -191,48 +191,143 @@ func AtBoundary(g []string) bool {
   return false
 }
 
+func TraverseGrid(g []string) []string {
+  // Deep Copy the graph so we can modify it
+  grid := make([]string, len(g))
+  copy(grid, g)
+
+  guard := FindGuardStart(g)
+
+  // limit to the total discrete spaces available
+  gridSize := int64(0)
+  for _, row := range g {
+    gridSize += int64(strings.Count(row, "."))
+  }
+  for i := int64(1); i < int64(gridSize); i++ {
+    grid, guard = MoveGuard(grid, guard)
+    if AtBoundary(grid) {
+      // Add in the current position before returning
+      tmpRow := []rune(grid[guard[0]])
+      tmpRow[guard[1]] = 'X'
+      grid[guard[0]] = string(tmpRow)
+
+      return grid
+    }
+  }
+  return grid
+}
+
 func part1(s string) int64 {
 
   grid := strings.Split(s, "\n")
 
-  // fmt.Printf("Analyzing grid: \n%v\n", grid)
+  grid = TraverseGrid(grid)
 
-  gridSize := int64(strings.Count(s, "."))
+  total := int64(0)
+  for _, t := range grid {
+    total += int64(strings.Count(t, "X"))
+  }
+  return total
+}
 
-  guard := FindGuardStart(grid)
+func HasLoop(g []string) bool {
 
-  // fmt.Printf("Starting at: %v\n", guard)
+  // Deep Copy the graph so we can modify it
+  grid := make([]string, len(g))
+  copy(grid, g)
 
-  // limit to the total discrete spaces available
-  for i := int64(1); i < int64(gridSize); i++ {
-    // fmt.Printf("STEP %d\n", i)
-    // fmt.Printf("Guard at: %v\n", guard)
-    // for _, v := range grid {
-    //   fmt.Println(v)
-    // }
+  guard := FindGuardStart(g)
 
-    grid, guard = MoveGuard(grid, guard)
-
-    // if leaving grid then return i
-    if AtBoundary(grid) {
-      total := int64(0)
-
-      for _, t := range grid {
-        total += int64(strings.Count(t, "X"))
-      }
-
-      // Add in the current position before returning
-      return total + 1
-    }
-
+  type move struct {
+    row int64
+    col int64
+    dir rune
   }
 
-  return gridSize
+  visited := map[move]struct{}{}
+
+  // Add the starting location to the set
+  currentMove := move{row: guard[0], col: guard[1], dir: rune(grid[guard[0]][guard[1]])}
+  visited[currentMove] = struct{}{}
+  // fmt.Printf("inserting: %v\n", currentMove)
+
+  // limit to the total discrete spaces available
+  gridSize := int64(0)
+  for _, row := range g {
+    gridSize += int64(strings.Count(row, "."))
+  }
+  for i := int64(1); i < int64(gridSize) * 2; i++ {
+    grid, guard = MoveGuard(grid, guard)
+    if AtBoundary(grid) {
+      return false
+    }
+    currentMove = move{row: guard[0], col: guard[1], dir: rune(grid[guard[0]][guard[1]])}
+    // check if we have visited before
+    _, ok := visited[currentMove]
+    if ok {
+      // fmt.Printf("Previously visited: %v\n", currentMove)
+      return true
+    } else {
+      // Add the current location to the set
+      // fmt.Printf("inserting: %v\n", currentMove)
+      visited[currentMove] = struct{}{}
+    }
+  }
+
+  return false
 }
 
 func part2(s string) int64 {
   total := int64(0)
 
+  grid := strings.Split(s, "\n")
+  //gridSize := int64(strings.Count(s, "."))
+  gridSize := int64((len(grid)-1) * len(grid[0]))
+
+  guard := FindGuardStart(grid)
+
+  // get the grid with the list of visited locations from part 1
+  grid = TraverseGrid(grid)
+
+  // Reset the starting point
+  tmpRow := []rune(grid[guard[0]])
+  tmpRow[guard[1]] = '^'
+  grid[guard[0]] = string(tmpRow)
+
+  // for each visited location, check to see if there is a loop
+  loopChan := make(chan bool, gridSize)
+
+  for i_iter := range len(grid) {
+    go func(i int) {
+      for j_iter := range len(grid[i]) {
+        go func(j int) {
+          if grid[i][j] != 'X' {
+            loopChan <- false
+          } else {
+            // Deep Copy the graph so we can modify it
+            newG := make([]string, len(grid))
+            copy(newG, grid)
+
+            tmp := []rune(newG[i])
+            tmp[j] = '#'
+            newG[i] = string(tmp)
+
+            l := HasLoop(newG)
+            // fmt.Printf("Tested %d,%d for %v\n", i, j, l)
+
+            loopChan <- l
+          }
+        }(j_iter)
+      }
+    }(i_iter)
+  }
+
+
+  for k := int64(0); k < gridSize; k++ {
+    if <-loopChan {
+      total++
+    }
+  }
 
   return total
 }
