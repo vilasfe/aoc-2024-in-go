@@ -159,6 +159,55 @@ func part1(s string) int64 {
 func part2(s string) int64 {
   total := int64(0)
 
+  // create a multimap of pairs for later lookup
+  // implemented as map of slices
+  allowable := make(map[int64][]int64)
+
+  // Parse file line by line
+  for _, line := range strings.Split(s, "\n") {
+    if line == "" {
+      continue
+    }
+
+    if strings.Contains(line, "|") {
+      // split into left|right
+      pair := Map(strings.Split(line, "|"), func(item string) int64 {
+        val, err := strconv.ParseInt(item, 10, 64)
+        if err != nil {
+          panic(err)
+        }
+        return val
+      })
+
+      // fmt.Printf("Adding %d|%d\n", pair[0], pair[1])
+      allowable[pair[0]] = append(allowable[pair[0]], pair[1])
+
+    } else if strings.Contains(line, ",") {
+      order := Map(strings.Split(line, ","), func(item string) int64 {
+        val, err := strconv.ParseInt(item, 10, 64)
+        if err != nil {
+          panic(err)
+        }
+        return val
+      })
+
+      if !IsValid(order, allowable) {
+        // fmt.Printf("Summing: %d\n", order[len(order)/2 + 1])
+        slices.SortFunc(order, func(a, b int64) int {
+          if slices.Contains(allowable[a], b) {
+            return -1
+          } else if slices.Contains(allowable[b], a) {
+            return 1
+          } else {
+            return 0
+          }
+        })
+        total += order[len(order)/2]
+      }
+    }
+
+  }
+
   return total
 }
 
