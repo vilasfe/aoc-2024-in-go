@@ -84,20 +84,49 @@ func AbsInt64(x int64) int64 {
 }
 
 func evalProdSum(col []int64) []int64 {
-  r := []int64{}
-
   if len(col) == 1 {
     return []int64{col[0]}
   }
 
-  pred := evalProdSum(col[:len(col)-1])
+  sum := col[0] + col[1]
+  prod := col[0] * col[1]
 
-  for _, p := range pred {
-    r = append(r, p + col[len(col)-1])
-    r = append(r, p * col[len(col)-1])
+  if len(col) == 2 {
+    return []int64{sum, prod}
   }
 
-  return r
+  predSum := evalProdSum(append([]int64{sum}, col[2:]...))
+  predProd := evalProdSum(append([]int64{prod}, col[2:]...))
+
+  return append(predSum, predProd...)
+
+}
+
+func evalProdSumConcat(col []int64) []int64 {
+  if len(col) == 1 {
+    return []int64{col[0]}
+  }
+
+  sum := col[0] + col[1]
+  prod := col[0] * col[1]
+
+  // convert col[0] and col[1] to strings and concatenate them
+  p_str := strconv.FormatInt(col[0], 10)
+  next_str := strconv.FormatInt(col[1], 10)
+  cat, err := strconv.ParseInt(p_str + next_str, 10, 64)
+  if err != nil {
+    panic(err)
+  }
+
+  if len(col) == 2 {
+    return []int64{sum, prod, cat}
+  }
+
+  predSum := evalProdSumConcat(append([]int64{sum}, col[2:]...))
+  predProd := evalProdSumConcat(append([]int64{prod}, col[2:]...))
+  predCat := evalProdSumConcat(append([]int64{cat}, col[2:]...))
+
+  return append(predSum, append(predProd, predCat...)...)
 }
 
 func part1(s string) int64 {
@@ -127,6 +156,8 @@ func part1(s string) int64 {
 
     rowTotal := evalProdSum(vars)
 
+    // fmt.Printf("Evaluating: %v as %v\n", vars, rowTotal)
+
     // If feasible then add the result to the total
     if slices.Contains(rowTotal, lineTotal) {
       total += lineTotal
@@ -139,6 +170,39 @@ func part1(s string) int64 {
 
 func part2(s string) int64 {
   total := int64(0)
+
+  // Parse file line by line
+  for _, line := range strings.Split(s, "\n") {
+    if line == "" {
+      continue
+    }
+    splitLine := strings.Split(line, ":")
+
+    lineTotal, l_err := strconv.ParseInt(splitLine[0], 10, 64)
+    if l_err != nil {
+      panic(l_err)
+    }
+
+    vars := Map(strings.Fields(splitLine[1]), func(item string) int64 {
+      val, err := strconv.ParseInt(item, 10, 64)
+      if err != nil {
+        panic(err)
+      }
+      return val
+    })
+
+    // fmt.Printf("Evaluating: %v\n", vars)
+
+    rowTotal := evalProdSumConcat(vars)
+
+    // fmt.Printf("Evaluating: %v as %v\n", vars, rowTotal)
+
+    // If feasible then add the result to the total
+    if slices.Contains(rowTotal, lineTotal) {
+      total += lineTotal
+    }
+
+  }
 
   return total
 }
