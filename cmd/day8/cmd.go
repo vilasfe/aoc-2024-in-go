@@ -101,6 +101,21 @@ type pos struct {
   y int64
 }
 
+func Compare(l, r pos) int {
+  if l.x == r.x {
+    return int(l.y - r.y)
+  }
+  return int(l.x - r.x)
+}
+
+func (p pos) Add(r pos) pos {
+  return pos{ x: p.x + r.x, y: p.y + r.y }
+}
+
+func (p pos) Subtract(r pos) pos {
+  return pos{ x: p.x - r.x, y: p.y - r.y }
+}
+
 func GetLocations(g []string, ant rune) []pos {
   p := []pos{}
 
@@ -130,6 +145,33 @@ func CalcInterference(p []pos) []pos {
       // Find places where 2dx and 2dy work
       i = append(i, pos{x: p[l].x + dx, y: p[l].y + dy})
       i = append(i, pos{x: p[r].x - dx, y: p[r].y - dy})
+    }
+  }
+
+  return i
+}
+
+func CalcInterference2(p []pos, bounds pos) []pos {
+  i := []pos{}
+
+  if len(p) < 2 {
+    return i
+  }
+
+  // for each pair, find delta-x and delta-y
+  for l := 0; l < len(p); l++ {
+    i = append(i, p[l])
+    for r := l+1; r < len(p); r++ {
+      diff := pos{x: p[l].x - p[r].x, y: p[l].y - p[r].y}
+
+      // Find places where l & r make a pattern to extend to 0 or the size of the array
+      for newPos := p[l].Add(diff); newPos.x >= 0 && newPos.y >= 0 && newPos.x < bounds.x && newPos.y < bounds.y; newPos = newPos.Add(diff) {
+        i = append(i, newPos)
+      }
+
+      for newPos := p[r].Subtract(diff); newPos.x >= 0 && newPos.y >= 0 && newPos.x < bounds.x && newPos.y < bounds.y; newPos = newPos.Subtract(diff) {
+        i = append(i, newPos)
+      }
     }
   }
 
@@ -181,12 +223,7 @@ func part1(s string) int64 {
   interference = Unique(interference)
 
   // sort the result for readability
-  slices.SortFunc(interference, func(a, b pos) int {
-    if a.x == b.x {
-      return int(a.y - b.y)
-    }
-    return int(a.x - b.x)
-  })
+  slices.SortFunc(interference, Compare)
 
   // fmt.Printf("Unique interference locations: %v\n", interference)
 
@@ -194,8 +231,52 @@ func part1(s string) int64 {
 }
 
 func part2(s string) int64 {
-  total := int64(0)
+  grid := strings.Split(s, "\n")
 
-  return total
+  interference := []pos{}
+
+  maxSize := pos{x: int64(len(grid)), y: int64(len(grid[0]))}
+
+
+  for c := 'a'; c < 'z'; c++ {
+    loc := GetLocations(grid, c)
+    if len(loc) > 1 {
+      // fmt.Printf("%x has locations %v\n", c, loc)
+      interference = append(interference, CalcInterference2(loc, maxSize)...)
+    }
+  }
+  for c := 'A'; c < 'Z'; c++ {
+    loc := GetLocations(grid, c)
+    if len(loc) > 1 {
+      // fmt.Printf("%s has locations %v\n", string(c), loc)
+      localInterference := CalcInterference2(loc, maxSize)
+      // fmt.Printf("%s has interference %v\n", string(c), localInterference)
+      interference = append(interference, localInterference...)
+    }
+  }
+  // Not a typo, including '9' makes it fail
+  for c := '0'; c <= '9'; c++ {
+    loc := GetLocations(grid, c)
+    if len(loc) > 1 {
+      // fmt.Printf("%s has locations %v\n", string(c), loc)
+      localInterference := CalcInterference2(loc, maxSize)
+      // fmt.Printf("%s has interference %v\n", string(c), localInterference)
+      interference = append(interference, localInterference...)
+    }
+  }
+
+  // filter interference based on size of graph
+  interference = slices.DeleteFunc(interference, func(n pos) bool {
+    return n.x < 0 || n.y < 0 || n.x >= int64(len(grid))-1 || n.y >= int64(len(grid[0]))
+  })
+
+  interference = Unique(interference)
+
+  // sort the result for readability
+  slices.SortFunc(interference, Compare)
+
+  fmt.Printf("Unique interference locations: %v\n", interference)
+
+  return int64(len(interference))
 }
 
