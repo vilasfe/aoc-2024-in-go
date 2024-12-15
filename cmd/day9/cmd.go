@@ -96,11 +96,29 @@ func Unique[T comparable](slice []T) []T {
   return result
 }
 
+// returns the first index of finding the subsequence e in s, or -1 if not present
+func IndexSeq[S ~[]E, E comparable](s S, e S) int {
+
+  if len(e) > len(s) {
+    return -1
+  }
+
+  for i := range len(s) - len(e) {
+    if slices.Equal(s[i:i+len(e)], e) {
+      return i
+    }
+  }
+
+  return -1
+}
+
 func Checksum(list []int64) int64 {
   total := int64(0)
 
   for i, v := range list {
-    total += int64(i) * v
+    if v >= int64(0) {
+      total += int64(i) * v
+    }
   }
 
   return total
@@ -163,6 +181,39 @@ func Fragment(l []int64) []int64 {
   return f
 }
 
+
+func Defragment(l []int64) []int64 {
+
+  diskMap := CreateDiskMap(l)
+
+  // for each file, try to move it left
+  for fileID := slices.Max(slices.Sorted(slices.Values(diskMap))); fileID >= 0; fileID-- {
+    // There's a better way from hanging onto the input from the caller as an index but
+    // we can brute force things here
+    fileLen := CountIf(diskMap, func(x int64) bool { return x == fileID })
+
+    filePtr := slices.Index(diskMap, fileID)
+
+    toInsert := IndexSeq(diskMap, slices.Repeat([]int64{-1}, int(fileLen)))
+
+    // if found to the left of the original location
+    if toInsert != -1 && filePtr != -1 && toInsert < filePtr {
+      // Put the new elements in place
+      diskMap = slices.Replace(diskMap, toInsert, toInsert + int(fileLen), slices.Repeat([]int64{fileID}, int(fileLen))...)
+      // Now go find and replace it for the rest of the slice
+      for i := toInsert + int(fileLen); i < len(diskMap); i++ {
+        if diskMap[i] == fileID {
+          diskMap[i] = -1
+        }
+      }
+    }
+  }
+
+  // fmt.Printf("Defragmented disk map: %v\n", diskMap)
+
+  return diskMap
+}
+
 func part1(s string) int64 {
 
   // convert string to []int64
@@ -179,8 +230,17 @@ func part1(s string) int64 {
 }
 
 func part2(s string) int64 {
-  total := int64(0)
 
-  return total
+  // convert string to []int64
+  intList := Map(strings.Split(strings.TrimSpace(s), ""), func(item string) int64 {
+    val, err := strconv.ParseInt(item, 10, 64)
+    if err != nil {
+      panic(err)
+    }
+    return val
+  })
+
+  // Defragment slice and return Checksum
+  return Checksum(Defragment(intList))
 }
 
