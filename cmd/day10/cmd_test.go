@@ -38,6 +38,26 @@ func TestParts(t *testing.T) {
       input:    `test5.txt`,
       fn:       part1,
     },
+    {
+      expected: 3,
+      input:    `test6.txt`,
+      fn:       part2,
+    },
+    {
+      expected: 13,
+      input:    `test7.txt`,
+      fn:       part2,
+    },
+    {
+      expected: 227,
+      input:    `test8.txt`,
+      fn:       part2,
+    },
+    {
+      expected: 81,
+      input:    `test5.txt`,
+      fn:       part2,
+    },
   }
 
   for _, test := range tests {

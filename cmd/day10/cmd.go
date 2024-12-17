@@ -155,11 +155,28 @@ func find2D[S ~[]E, E comparable](s []S, e E) [][]int {
   return retVal
 }
 
-func part1(s string) int64 {
+// this assumes a DAG since it has no "seen check"
+func depthFirstSearch[S ~[][]E, E int](g S, start int, visit func(int) ) {
+  queue := []int{}
+  queue = append(queue, start)
 
-  // fmt.Printf("Initial string has len: %d\n", len(s))
+  for len(queue) > 0 {
+    v := queue[0]
+    visit(v)
+    if len(queue) > 1 {
+      queue = queue[1:]
+    } else {
+      queue = []int{}
+    }
+    for i, val := range g[v] {
+      if val > 0 && val < math.MaxInt32 {
+        queue = append(queue, i)
+      }
+    }
+  }
+}
 
-  // Make the input into a grid of ints
+func gridFromInput(s string) [][]int {
   grid := [][]int{}
   for _, line := range strings.Split(s, "\n") {
     row := Map(strings.Split(strings.TrimSpace(line), ""), func(item string) int {
@@ -174,10 +191,10 @@ func part1(s string) int64 {
     }
   }
 
-  // fmt.Printf("Input Grid is %dx%d=%d\n", len(grid), len(grid[0]), len(grid) * len(grid[0]))
-  // print2D(grid)
+  return grid
+}
 
-  // Setup an adjacency matrix where each nodeID is len(grid[0]) * row + col
+func gridToGraph(grid [][]int) [][]int {
   // Set all distances to math.MaxInt32 for infinity before we update the distance matrix
   graph := [][]int{}
   gridSize := len(grid) * len(grid[0])
@@ -229,6 +246,21 @@ func part1(s string) int64 {
       }
     }
   }
+  return graph
+}
+
+func part1(s string) int64 {
+
+  // fmt.Printf("Initial string has len: %d\n", len(s))
+
+  // Make the input into a grid of ints
+  grid := gridFromInput(s)
+
+  // fmt.Printf("Input Grid is %dx%d=%d\n", len(grid), len(grid[0]), len(grid) * len(grid[0]))
+  // print2D(grid)
+
+  // Setup an adjacency matrix where each nodeID is len(grid[0]) * row + col
+  graph := gridToGraph(grid)
 
   // fmt.Println("Original adjacency matrix")
   // print2D(graph)
@@ -261,6 +293,28 @@ func part1(s string) int64 {
 
 func part2(s string) int64 {
 
-  return int64(0)
+  // Read in the grid
+  grid := gridFromInput(s)
+
+  // Convert it to an adjacency matrix
+  graph := gridToGraph(grid)
+
+  // Find all zeroes as trailheads
+  trailheads := find2D(grid, 0)
+
+  // Run DFS with a visitor function to add if it sees a 9 in the original grid
+  score := int64(0)
+  for _, t := range trailheads {
+    t_idx := t[0] * len(grid[0]) + t[1]
+    depthFirstSearch(graph, t_idx, func (idx int) {
+      r := idx / len(grid[0])
+      c := idx % len(grid[0])
+      if grid[r][c] == 9 {
+        score++
+      }
+    })
+  }
+
+  return score
 }
 
