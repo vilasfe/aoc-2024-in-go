@@ -189,25 +189,55 @@ func splitStone(s string) (int64, int64) {
   return r_list[0], r_list[1]
 }
 
-func blink(rocks []int64) []int64 {
+func blink(rock int64) []int64 {
   newRocks := []int64{}
 
-  for _, r := range rocks {
-    s := strconv.FormatInt(r, 10)
+  s := strconv.FormatInt(rock, 10)
 
-    switch {
-    case r == 0:
-      newRocks = append(newRocks, 1)
-    case len(s)%2 == 0:
-      s1, s2 := splitStone(s)
-      newRocks = append(newRocks, s1, s2)
-      // fmt.Printf("%d %d\n", s1, s2)
-    default:
-      newRocks = append(newRocks, r*2024)
-    }
+  switch {
+  case rock == 0:
+    newRocks = append(newRocks, 1)
+  case len(s)%2 == 0:
+    s1, s2 := splitStone(s)
+    newRocks = append(newRocks, s1, s2)
+    // fmt.Printf("%d %d\n", s1, s2)
+  default:
+    newRocks = append(newRocks, rock*2024)
   }
 
   return newRocks
+}
+
+func getStoneCountAfterMultiBlink(stone int64, cache map[int64][]int64, blinks int) int64 {
+  // check to see if the stone is in the cache already
+  if _, ok := cache[stone]; ok {
+    // if yes and it has a blink count to the end, then return that value
+    if cache[stone][blinks-1] != 0 {
+      return cache[stone][blinks-1]
+    }
+  } else {
+    // add a cache 75 long
+    cache[stone] = make([]int64, 75)
+  }
+
+  // Now if there was a cache miss, then keep going
+
+  // If the blink count is 1 (recursive base case) then set the cache value and return
+  if blinks == 1 {
+    cache[stone][0] = int64(len(blink(stone)))
+    return cache[stone][0]
+  }
+
+  // If we had a cache miss and not at the base case yet, then recurse
+  sum := int64(0)
+
+  for _, s := range blink(stone) {
+    sum += getStoneCountAfterMultiBlink(s, cache, blinks-1)
+  }
+
+  // Populate the cache and return
+  cache[stone][blinks-1] = sum
+  return sum
 }
 
 func part1(s string) int64 {
@@ -220,18 +250,33 @@ func part1(s string) int64 {
       return val
     })
 
-  // fmt.Printf("%v\n", slice)
+  total := int64(0)
+  cache := map[int64][]int64{}
 
-  for i := 0; i < 25; i++ {
-    slice = blink(slice)
-    // fmt.Printf("%v\n", slice)
+  for _, s := range slice {
+    total += getStoneCountAfterMultiBlink(s, cache, 25)
   }
 
-  return int64(len(slice))
+  return total
 }
 
 func part2(s string) int64 {
 
-  return int64(0)
+  slice := Map(strings.Fields(s), func(item string) int64 {
+      val, err := strconv.ParseInt(item, 10, 64)
+      if err != nil {
+        panic(err)
+      }
+      return val
+    })
+
+  total := int64(0)
+  cache := map[int64][]int64{}
+
+  for _, s := range slice {
+    total += getStoneCountAfterMultiBlink(s, cache, 75)
+  }
+
+  return total
 }
 

@@ -19,7 +19,7 @@ func TestParts(t *testing.T) {
       fn:       part1,
     },
     {
-      expected: 0,
+      expected: 186996,
       input:    `test.txt`,
       fn:       part2,
     },
