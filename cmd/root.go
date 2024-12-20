@@ -12,6 +12,7 @@ import (
   "aoc-2024-in-go/cmd/day9"
   "aoc-2024-in-go/cmd/day10"
   "aoc-2024-in-go/cmd/day11"
+  "aoc-2024-in-go/cmd/day12"
 
   "fmt"
   "os"
@@ -40,6 +41,7 @@ func init() {
   Cmd.AddCommand(day9.Cmd)
   Cmd.AddCommand(day10.Cmd)
   Cmd.AddCommand(day11.Cmd)
+  Cmd.AddCommand(day12.Cmd)
 }
 
 func Execute() {
