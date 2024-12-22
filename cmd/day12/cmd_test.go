@@ -19,13 +19,39 @@ func TestParts(t *testing.T) {
       fn:       part1,
     },
     {
+      expected: 140,
+      input:    `test1.txt`,
+      fn:       part1,
+    },
+    {
       expected: 1930,
       input:    `test2.txt`,
       fn:       part1,
     },
+
     {
-      expected: 0,
+      expected: 436,
       input:    `test.txt`,
+      fn:       part2,
+    },
+    {
+      expected: 80,
+      input:    `test1.txt`,
+      fn:       part2,
+    },
+    {
+      expected: 1206,
+      input:    `test2.txt`,
+      fn:       part2,
+    },
+    {
+      expected: 236,
+      input:    `test3.txt`,
+      fn:       part2,
+    },
+    {
+      expected: 368,
+      input:    `test4.txt`,
       fn:       part2,
     },
   }

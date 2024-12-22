@@ -236,15 +236,13 @@ func bfs2D(g []string, start pos, seen [][]bool) []pos {
   return cluster
 }
 
-func perimiter(cluster []pos) int64 {
+func perimeter(cluster []pos) int64 {
   // this is basically a BFS for the list of connected vertices
   // that reduces p by 1 if 2 nodes are connected
   p := 4 * int64(len(cluster))
-
   dirs := []pos{pos{row:0, col:-1}, pos{row:0, col:1}, pos{row:-1, col:0}, pos{row:1, col:0}}
 
   seen := map[pos]struct{}{}
-
   neighbors := []pos{cluster[0]}
 
   for len(neighbors) > 0 {
@@ -263,6 +261,52 @@ func perimiter(cluster []pos) int64 {
   }
 
   return p
+}
+
+func side(cluster []pos) int64 {
+
+  total := int64(0)
+
+  // N, E, S, W
+  dirs := []pos{pos{row:-1, col:0}, pos{row:0, col:1}, pos{row:1, col:0}, pos{row:0, col:-1}}
+  // NE, SE, SW, NW
+  diag := []pos{pos{row:-1, col:1}, pos{row:1, col:1}, pos{row:1, col:-1}, pos{row:-1, col:-1}}
+
+  for _, p := range cluster {
+    // Calculate whether the N,E,S,W neighbors are outside of the cluster
+    cardinal := Map(dirs, func(d pos) bool {
+      return !slices.Contains(cluster, Add(p, d))
+    })
+
+    // Same for the diagonals at NE, cw to NW
+    diagonal := Map(diag, func(d pos) bool {
+      return !slices.Contains(cluster, Add(p, d))
+    })
+
+    // a corner happens if 2 dirs are outside of the region (convex corner)
+    // or the 2 dirs are not outside of the region but the diagonal between
+    // them is outside (concave corner)
+    corner := func (a, ab, b bool) int64 {
+      if (a && b) || (!a && ab && !b) {
+        return int64(1)
+      }
+      return int64(0)
+    }
+
+    // N, NE, E
+    total += corner(cardinal[0], diagonal[0], cardinal[1])
+    // N, NW, W
+    total += corner(cardinal[0], diagonal[3], cardinal[3])
+    // S, SE, E
+    total += corner(cardinal[2], diagonal[1], cardinal[1])
+    // S, SW, W
+    total += corner(cardinal[2], diagonal[2], cardinal[3])
+
+    // fmt.Printf("Processing %v, total: %d\n", p, total)
+
+  }
+
+  return total
 }
 
 func part1(s string) int64 {
@@ -287,16 +331,16 @@ func part1(s string) int64 {
 
   total := int64(0)
 
-  // for each region add the product of the area and perimiter to the total
+  // for each region add the product of the area and perimeter to the total
   for _, c := range clusters {
-
-    // fmt.Printf("%v %d\n", c, len(c))
 
     // the area of each is the vertex count
     a := int64(len(c))
 
-    // find the perimiter of each
-    p := perimiter(c)
+    // find the perimeter of each
+    p := perimeter(c)
+
+    // fmt.Printf("%s: %d * %d = %d\n", string(grid[c[0].row][c[0].col]), a, p, a*p)
 
     total += a * p
   }
@@ -306,7 +350,43 @@ func part1(s string) int64 {
 
 func part2(s string) int64 {
 
+  grid := gridFromInput(s)
+
+  // fmt.Printf("%v\n", grid)
+
+  seen := [][]bool{}
+  for _ = range len(grid) {
+    seen = append(seen, slices.Repeat([]bool{false}, len(grid[0])))
+  }
+
+  // do an iterated 2D BFS or DFS to get the contiguous regions
+  clusters := [][]pos{}
+  for r := range len(grid) {
+    for c := range len(grid[0]) {
+      cluster := bfs2D(grid, pos{row: int64(r), col: int64(c)}, seen)
+      if len(cluster) > 0 {
+        clusters = append(clusters, cluster)
+      }
+    }
+  }
+
   total := int64(0)
+
+  // for each region add the product of the area and perimeter to the total
+  for _, c := range clusters {
+
+    // fmt.Printf("%v %d\n", c, len(c))
+
+    // the area of each is the vertex count
+    a := int64(len(c))
+
+    // find the perimeter of each
+    p := side(c)
+
+    // fmt.Printf("%s: %d * %d = %d\n", string(grid[c[0].row][c[0].col]), a, p, a*p)
+
+    total += a * p
+  }
 
   return total
 }
