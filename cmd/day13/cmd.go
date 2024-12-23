@@ -319,6 +319,11 @@ func ParseFile(s string) []machine {
   return machines
 }
 
+func (m machine) MovePrize(x int64) machine {
+  m.prize = Add(m.prize, pos{row: x, col: x})
+  return m
+}
+
 func (m machine) Solve() int64 {
   // We should have this as:
   // | AX BX | | A |   | PX |
@@ -363,8 +368,27 @@ func part1(s string) int64 {
 
 func part2(s string) int64 {
 
-  total := int64(0)
+  machines := ParseFile(s)
+  //fmt.Printf("machines: %v\n", machines)
 
+  for m, _ := range machines {
+    machines[m] = machines[m].MovePrize(10000000000000)
+  }
+
+  //fmt.Printf("machines: %v\n", machines)
+
+  totChan := make(chan int64)
+
+  for _, m := range machines {
+    go func(m machine) {
+      totChan <- m.Solve()
+    }(m)
+  }
+
+  total := int64(0)
+  for _ = range len(machines) {
+    total += <-totChan
+  }
   return total
 }
 
