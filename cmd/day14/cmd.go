@@ -332,7 +332,7 @@ func safetyFactor(robots []robot, bounds pos) int64 {
     return r.position.row > halfRow && r.position.col < halfCol
   })
 
-  fmt.Printf("%d %d %d %d\n", q1, q2, q3, q4)
+  // fmt.Printf("%d %d %d %d\n", q1, q2, q3, q4)
   return q1 * q2 * q3 * q4
 }
 
@@ -349,20 +349,48 @@ func part1(s string) int64 {
     bounds = pos{row: 103, col: 101}
   }
 
-  fmt.Printf("Bounds: %v\n", bounds)
+  // fmt.Printf("Bounds: %v\n", bounds)
 
   for r, _ := range robots {
     robots[r] = Move(robots[r], bounds, 100)
   }
 
-  fmt.Printf("robots: %v\n", robots)
+  // fmt.Printf("robots: %v\n", robots)
 
   return safetyFactor(robots, bounds)
 }
 
 func part2(s string) int64 {
 
-  total := int64(0)
-  return total
+  robots := ParseFile(s)
+
+  // fmt.Printf("robots: %v\n", robots)
+
+  bounds := pos{row: 7, col: 11}
+
+  // Use the real bounds instead of the test bounds if we are on the real inputs
+  if len(robots) > 14 {
+    bounds = pos{row: 103, col: 101}
+  }
+
+  // fmt.Printf("Bounds: %v\n", bounds)
+
+  minSafety := int64(math.MaxInt32)
+  minIter := int64(0)
+
+  for s := range bounds.row * bounds.col {
+    for r, _ := range robots {
+      robots[r] = Move(robots[r], bounds, 1)
+    }
+    safety := safetyFactor(robots, bounds)
+    if safety < minSafety {
+      minSafety = safety
+      minIter = s
+    }
+  }
+
+  // fmt.Printf("robots: %v\n", robots)
+
+  return int64(minIter + 1)
 }
 
