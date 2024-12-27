@@ -96,6 +96,15 @@ func Unique[T comparable](slice []T) []T {
   return result
 }
 
+func UniqueFunc[T any](slice []T, cmp func (l, r T) int) (result []T) {
+  for _, v := range slice {
+    if !slices.ContainsFunc(result, func (r T) bool { return cmp(v, r) == 0 }) {
+      result = append(result, v)
+    }
+  }
+  return
+}
+
 // returns the first index of finding the subsequence e in s, or -1 if not present
 func IndexSeq[S ~[]E, E comparable](s S, e S) int {
 
@@ -273,6 +282,14 @@ func ParseFile(s string) ([]string, string) {
   return strings.Split(file[0], "\n"), strings.ReplaceAll(file[1], "\n", "")
 }
 
+type box struct {
+  vol []pos
+}
+
+func CompareBox(l, r box) int {
+  return Compare(l.vol[0], r.vol[0])
+}
+
 func Move(g []string, r pos, m rune) ([]string, pos) {
 
   dir := pos{}
@@ -292,39 +309,67 @@ func Move(g []string, r pos, m rune) ([]string, pos) {
     }
   }
 
-  train := []pos{r}
-  shouldMove := false
+  train := []box{box{vol: []pos{r}}}
+  shouldMove := true
 
-  for t := r; g[t.row][t.col] != '#' && g[t.row][t.col] != '.'; {
-    t = Add(t, dir)
-
-    if g[t.row][t.col] == 'O' {
-      train = append(train, t)
-    } else if g[t.row][t.col] == '.' {
-      train = append(train, t)
-      shouldMove = true
+  // Append boxes to the train as encountered in the direction of travel
+  for front := train; len(front) != 0 && shouldMove; {
+    newFront := []box{}
+    for _, f := range front {
+      newFront = append(newFront, f.Neighbors(dir, g)...)
+      fmt.Printf("%v\n", newFront)
+      if f.Blocked(dir, g) {
+        shouldMove = false
+      }
     }
+    train = append(train, newFront...)
+    front = newFront
   }
+
+  train = UniqueFunc(train, CompareBox)
 
   if shouldMove {
     // update the grid by moving the train around
     slices.Reverse(train)
-    // fmt.Printf("%s %v\n", string(m), train)
-    for t, _ := range train[:len(train)-1] {
-      temp := rune(g[train[t].row][train[t].col])
-      tr := []rune(g[train[t].row])
-      tr[train[t].col] = rune(g[train[t+1].row][train[t+1].col])
-      g[train[t].row] = string(tr)
+    fmt.Printf("train: %v\n", train)
 
-      tr2 := []rune(g[train[t+1].row])
-      tr2[train[t+1].col] = temp
-      g[train[t+1].row] = string(tr2)
+    for _, b := range train {
+      revVol := make([]pos, len(b.vol))
+      copy(revVol, b.vol)
+      if m == '>' {
+        slices.Reverse(revVol)
+      }
+      fmt.Printf("swapping from: %v\n", b.vol)
+      for _, v := range revVol {
+        toSwap := Add(v, dir)
+        fmt.Printf("swapping %v into: %v\n", v, toSwap)
+        temp := rune(g[v.row][v.col])
+        tr := []rune(g[v.row])
+        tr[v.col] = rune(g[toSwap.row][toSwap.col])
+        g[v.row] = string(tr)
+
+        tr2 := []rune(g[toSwap.row])
+        tr2[toSwap.col] = temp
+        g[toSwap.row] = string(tr2)
+      }
     }
+
     return g, Add(r, dir)
   } else {
     // fmt.Printf("%s Not Moving\n", string(m))
     return g, r
   }
+}
+
+func expandGrid(g []string) []string {
+  for i, s := range g {
+    s = strings.ReplaceAll(s, "#", "##")
+    s = strings.ReplaceAll(s, "O", "[]")
+    s = strings.ReplaceAll(s, ".", "..")
+    s = strings.ReplaceAll(s, "@", "@.")
+    g[i] = s
+  }
+  return g
 }
 
 func ScoreGPS(g []string) int64 {
@@ -334,12 +379,58 @@ func ScoreGPS(g []string) int64 {
     total += int64(100 * i[0] + i[1])
   }
 
+  for _, i := range find2DString(g, '[') {
+    total += int64(100 * i[0] + i[1])
+  }
+
   return total
+}
+
+func findBoxes(g []string) []box {
+  boxes := []box{}
+
+  for _, b := range find2DString(g, 'O') {
+    boxes = append(boxes, box{vol: []pos{pos{row: int64(b[0]), col: int64(b[1])}}})
+  }
+
+  for _, b := range find2DString(g, '[') {
+    boxes = append(boxes, box{vol: []pos{pos{row: int64(b[0]), col: int64(b[1])}, pos{row: int64(b[0]), col: int64(b[1]+1)}}})
+  }
+  return boxes
+}
+
+func (b box) Blocked(dir pos, grid []string) bool {
+  for _, v := range b.vol {
+    if t := Add(v, dir); grid[t.row][t.col] == '#' {
+      return true
+    }
+  }
+  return false
+}
+
+func (b box) Neighbors(dir pos, grid[] string) []box {
+  boxes := []box{}
+  for _, v := range b.vol {
+    if t := Add(v, dir); !slices.Contains(b.vol, t) {
+      if grid[t.row][t.col] == '[' {
+        boxes = append(boxes, box{vol: []pos{t, pos{row: t.row, col: t.col+1}}})
+      } else if grid[t.row][t.col] == ']' {
+        boxes = append(boxes, box{vol: []pos{pos{row: t.row, col: t.col-1}, t}})
+      } else if grid[t.row][t.col] == 'O' {
+        boxes = append(boxes, box{vol: []pos{t}})
+      }
+    }
+  }
+  return UniqueFunc(boxes, CompareBox)
 }
 
 func part1(s string) int64 {
 
   grid, moves := ParseFile(s)
+
+  for _, s := range grid {
+    fmt.Println(s)
+  }
 
   start := find2DString(grid, '@')[0]
 
@@ -347,6 +438,14 @@ func part1(s string) int64 {
 
   for _, m := range moves {
     grid, robot = Move(grid, robot, m)
+    // fmt.Printf("%s\n", string(m))
+    // for _, s := range grid {
+    //   fmt.Println(s)
+    // }
+  }
+
+  for _, s := range grid {
+    fmt.Println(s)
   }
 
   return ScoreGPS(grid)
@@ -354,6 +453,30 @@ func part1(s string) int64 {
 
 func part2(s string) int64 {
 
-  return int64(0)
+  grid, moves := ParseFile(s)
+
+  grid = expandGrid(grid)
+
+  for _, s := range grid {
+    fmt.Println(s)
+  }
+
+  start := find2DString(grid, '@')[0]
+
+  robot := pos{row: int64(start[0]), col: int64(start[1])}
+
+  for _, m := range moves {
+    grid, robot = Move(grid, robot, m)
+    fmt.Printf("%s\n", string(m))
+    for _, s := range grid {
+      fmt.Println(s)
+    }
+  }
+
+  for _, s := range grid {
+    fmt.Println(s)
+  }
+
+  return ScoreGPS(grid)
 }
 
